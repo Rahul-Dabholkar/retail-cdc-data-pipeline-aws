@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local environment configuration
+.env
+.env*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts & packages
+*.zip
+*.tar.gz

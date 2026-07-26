@@ -1,0 +1,30 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CloudFormation template for EventBridge Ruleretail-data-pipeline-stepfunctions-eventbridge-rule",
+  "Resources": {
+    "Rulea3d1dfd3": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "retail-data-pipeline-stepfunctions-eventbridge-rule",
+        "ScheduleExpression": "rate(10 minutes)",
+        "State": "ENABLED",
+        "Description": "",
+        "EventBusName": "default",
+        "$metadata": {
+          "httpStatusCode": 200,
+          "requestId": "e9ba360a-9111-49d5-9441-67e2b0abec0f",
+          "attempts": 1,
+          "totalRetryDelay": 0
+        },
+        "Targets": [{
+          "Id": "Id9d1750aa-1755-4b50-b262-39e8f018ca37",
+          "Arn": {
+            "Fn::Sub": "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:retail-data-pipeline-state-machine"
+          },
+          "RoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/service-role/Amazon_EventBridge_Invoke_Step_Functions_1022082252"
+        }]
+      }
+    }
+  },
+  "Parameters": {}
+}

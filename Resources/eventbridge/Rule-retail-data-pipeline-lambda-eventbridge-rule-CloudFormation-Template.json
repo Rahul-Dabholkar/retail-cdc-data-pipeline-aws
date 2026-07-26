@@ -1,0 +1,30 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CloudFormation template for EventBridge Ruleretail-data-pipeline-lambda-eventbridge-rule",
+  "Resources": {
+    "Rule165ac38b": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "retail-data-pipeline-lambda-eventbridge-rule",
+        "ScheduleExpression": "rate(2 minutes)",
+        "State": "ENABLED",
+        "Description": "",
+        "EventBusName": "default",
+        "$metadata": {
+          "httpStatusCode": 200,
+          "requestId": "726dd9e7-0bc5-4a28-9458-0090bc9c3af2",
+          "attempts": 1,
+          "totalRetryDelay": 0
+        },
+        "Targets": [{
+          "Id": "Id4e724e14-77a5-48c6-80af-11b4f115705f",
+          "Arn": {
+            "Fn::Sub": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:retail-data-pipeline-datagenerator"
+          },
+          "RoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/service-role/Amazon_EventBridge_Invoke_Lambda_1028160381"
+        }]
+      }
+    }
+  },
+  "Parameters": {}
+}

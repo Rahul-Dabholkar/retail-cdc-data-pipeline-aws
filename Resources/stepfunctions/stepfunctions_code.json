@@ -1,0 +1,235 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "Parallel Transform Jobs",
+  "States": {
+    "Parallel Transform Jobs": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "glue_products_transform_job",
+          "States": {
+            "glue_products_transform_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": " retail-data-pipeline-product-job"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "glue_customers_transform_job",
+          "States": {
+            "glue_customers_transform_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-customer-job"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "glue_orders_transform_job",
+          "States": {
+            "glue_orders_transform_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-orders-job"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "glue_orderdetails_transform_job",
+          "States": {
+            "glue_orderdetails_transform_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-order-details-job"
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "Next": "Wait 5 seconds"
+    },
+    "Wait 5 seconds": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "Parallel Load Dimensions"
+    },
+    "Parallel Load Dimensions": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "glue_products_load_job",
+          "States": {
+            "glue_products_load_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-load-product-job"
+              },
+              "Next": "sp_merge_dim_product"
+            },
+            "sp_merge_dim_product": {
+              "Type": "Task",
+              "Parameters": {
+                "Sql": "CALL sales.sp_merge_dim_product()",
+                "Database": "production",
+                "SecretArn": "arn:aws:secretsmanager:ap-south-1:YOUR_AWS_ACCOUNT_ID:secret:redshift!retail-data-pipeline-redshift-namespace-admin-NB4hDH",
+                "WorkgroupName": "arn:aws:redshift-serverless:ap-south-1:YOUR_AWS_ACCOUNT_ID:workgroup/fba3d15e-6b6c-4535-aa86-f874b1a316b0"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:redshiftdata:executeStatement",
+              "ResultPath": "$.sql_output",
+              "Next": "Wait on sp_merge_dim_product"
+            },
+            "Wait on sp_merge_dim_product": {
+              "Type": "Wait",
+              "Seconds": 5,
+              "Next": "sp_merge_dim_product_status_check"
+            },
+            "sp_merge_dim_product_status_check": {
+              "Type": "Task",
+              "Parameters": {
+                "Id.$": "$.sql_output.Id"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:redshiftdata:describeStatement",
+              "ResultPath": "$.sql_output",
+              "Next": "Product Choice"
+            },
+            "Product Choice": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "product_dim_pass_to_next",
+                  "Variable": "$.sql_output.Status",
+                  "StringEquals": "FINISHED"
+                },
+                {
+                  "Next": "Fail",
+                  "Variable": "$.sql_output.Status",
+                  "StringEquals": "FAILED"
+                }
+              ],
+              "Default": "Wait on sp_merge_dim_product"
+            },
+            "product_dim_pass_to_next": {
+              "Type": "Pass",
+              "End": true
+            },
+            "Fail": {
+              "Type": "Fail"
+            }
+          }
+        },
+        {
+          "StartAt": "glue_customers_load_job",
+          "States": {
+            "glue_customers_load_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-load-customer-job"
+              },
+              "Next": "sp_merge_dim_customer"
+            },
+            "sp_merge_dim_customer": {
+              "Type": "Task",
+              "Parameters": {
+                "Sql": "CALL sales.sp_merge_dim_customer()",
+                "Database": "production",
+                "SecretArn": "arn:aws:secretsmanager:ap-south-1:YOUR_AWS_ACCOUNT_ID:secret:redshift!retail-data-pipeline-redshift-namespace-admin-NB4hDH",
+                "WorkgroupName": "arn:aws:redshift-serverless:ap-south-1:YOUR_AWS_ACCOUNT_ID:workgroup/fba3d15e-6b6c-4535-aa86-f874b1a316b0"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:redshiftdata:executeStatement",
+              "ResultPath": "$.sql_output",
+              "Next": "Wait on sp_merge_dim_customer"
+            },
+            "Wait on sp_merge_dim_customer": {
+              "Type": "Wait",
+              "Seconds": 5,
+              "Next": "sp_merge_dim_customer_status_check"
+            },
+            "sp_merge_dim_customer_status_check": {
+              "Type": "Task",
+              "Parameters": {
+                "Id.$": "$.sql_output.Id"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:redshiftdata:describeStatement",
+              "ResultPath": "$.sql_output",
+              "Next": "Customer Choice"
+            },
+            "Customer Choice": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "customer_dim_pass_to_next",
+                  "Variable": "$.sql_output.Status",
+                  "StringEquals": "FINISHED"
+                },
+                {
+                  "Next": "Fail (1)",
+                  "Variable": "$.sql_output.Status",
+                  "StringEquals": "FAILED"
+                }
+              ],
+              "Default": "Wait on sp_merge_dim_customer"
+            },
+            "customer_dim_pass_to_next": {
+              "Type": "Pass",
+              "End": true
+            },
+            "Fail (1)": {
+              "Type": "Fail"
+            }
+          }
+        }
+      ],
+      "Next": "Parallel Load Facts"
+    },
+    "Parallel Load Facts": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "glue_orders_load_job",
+          "States": {
+            "glue_orders_load_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-load-orders-job"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "glue_orderdetails_load_job",
+          "States": {
+            "glue_orderdetails_load_job": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::glue:startJobRun.sync",
+              "Parameters": {
+                "JobName": "retail-data-pipeline-load-orderdetails-job"
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    }
+  },
+  "QueryLanguage": "JSONPath"
+}
